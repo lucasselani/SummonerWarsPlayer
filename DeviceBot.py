@@ -8,8 +8,7 @@ import subprocess as sp
 from time import sleep
 from threading import Thread
 
-default_width = 720
-default_height = 1280
+device_name = ''
 screen_width = 0
 screen_height = 0
 #-------------- USABLE METHODS -------------------------
@@ -41,8 +40,9 @@ def tap_image(query_image,width_modifier=1, height_modifier=1, retries=1):
 def find_image(queryimage_file, screenshot_match=None):
     #self.log.append('Trying to find %s in current screen' % queryimage_file)
     try:
+        queryimage_file = queryimage_file.replace('#', device_name)
         screenshot_name=randomword(5)
-        screenshot_match="%s\%s.png" % ('screenshots',screenshot_name)
+        screenshot_match="%s\%s.png" % ('screenshots', screenshot_name)
         screenshot(screenshot_name, path='screenshots')
         return find_template(queryimage_file, screenshot_match)
     finally:
@@ -64,10 +64,12 @@ def find_template(queryimage,screenshot_match):
     threshold = 0.9
     loc = np.where(res >= threshold)
     for pt in zip(*loc[::-1]):
+        print 'Template found'
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         top_left = max_loc
         bottom_right = (top_left[0] + w, top_left[1] + h)
         return (top_left[0],top_left[1],bottom_right[0],bottom_right[1])
+    print 'Nothing found'
     return None
 
 def screenshot(name, path=None):
@@ -81,17 +83,20 @@ def screenshot(name, path=None):
     if(height > width):
         os.system('sips -r 270 %s >/dev/null 2&>1' % full_path)
 
-    if(width > default_width or height > default_height):
-        img = img.resize((default_width, default_height), Image.ANTIALIAS)
-        img.save('name.png') 
-
 def get_screen():
     size = sp.check_output(['adb', 'shell', 'wm', 'size'])
     size = size.replace('x', ' ')
     size_in_number = [int(s) for s in size.split() if s.isdigit()]
+    global screen_width
+    global screen_height 
+    screen_width, screen_height = size_in_number
+    print 'Screen sizes got:', screen_width, 'x', screen_height
 
-    screen_widht, screen_height = size_in_number
-    print 'Screen sizes got'
+def get_device_name():
+    global device_name
+    device_name = sp.check_output(['adb', 'shell', 'getprop', 'ro.product.name'])
+    device_name = ''.join(device_name.split())
+    print 'Device name got:', device_name
 
 def randomword(length):
     s=string.lowercase+string.digits
@@ -105,8 +110,10 @@ def initialize():
     server = Thread(target = start_server, args = ())
     server.start()
     server.join()
-    print 'ADB Server started. Getting screen sizes'
+    print 'ADB Server started.'
+    print 'Getting device info...'
     get_screen()
+    get_device_name()
 
 if __name__ == '__main__':
     initialize()

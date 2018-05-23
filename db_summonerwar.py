@@ -103,4 +103,5 @@ def exitGracefully(self, signum, frame):
 
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, exitGracefully)
+    DeviceBot.initialize()
     main()
